@@ -1,5 +1,5 @@
 {
-  "name": "mlpl-bank-system",
+  "name": "mlpl-bank-payment-system",
   "version": "1.0.0",
   "description": "Mathrusri Logistics Bank Payment System",
   "main": "server.js",
@@ -7,9 +7,7 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
     "csv-parser": "^3.0.0",
-    "express": "^4.19.2",
-    "sqlite3": "^5.1.7"
+    "express": "^4.19.2"
   }
 }
