@@ -86,25 +86,21 @@
       <div>
         <h1>MATHRUSRI LOGISTICS PVT LTD</h1>
         <div class="sub-heading">BANK PAYMENT SYSTEM</div>
-        <span class="badge" id="masterCountBadge">0 Master Accounts Loaded</span>
+        <span class="badge" id="masterCountBadge">Loading Master Accounts...</span>
       </div>
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="importMasterCSV(event)" />
-        <button class="btn btn-outline" onclick="document.getElementById('csvFileInput').click()">📁 Load Master CSV</button>
         <button class="btn btn-outline" onclick="toggleAddModal()">+ Add New Master Acc</button>
         <button class="btn btn-success" onclick="downloadEntriesCSV()">⬇ Download CSV (<span id="savedCount">0</span>)</button>
       </div>
     </header>
   </div>
 
-  <!-- Left Middle Part Total Amount Display -->
   <div class="total-banner">
     <span class="total-banner-label">Total Payment Amount</span>
     <span class="total-banner-val mono" id="middleTotalAmount">₹0.00</span>
   </div>
 
   <div class="card">
-    <!-- Step 1: Search & Continue -->
     <div class="step-box active" id="step1Box">
       <div class="input-group">
         <label for="accSearchInput">STEP 1: Enter Full Account Number OR Last 5 Digits</label>
@@ -125,7 +121,6 @@
       </div>
     </div>
 
-    <!-- Step 3: Transaction Type, Details & Amount -->
     <div class="step-box" id="step2Box" style="display: none;">
       <div style="margin-bottom: 14px; padding: 12px; background: #ffffff; border: 1px solid var(--border); border-radius: 8px;">
         <h4 style="margin-bottom: 6px; color: var(--primary);">Selected Account Details</h4>
@@ -154,7 +149,6 @@
     </div>
   </div>
 
-  <!-- Saved Entries Table -->
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
       <h3 style="font-size: 1rem;">Saved Entries for Bulk Upload Export</h3>
@@ -183,12 +177,9 @@
   </div>
 </div>
 
-<!-- Modal for Download Details Display & Copy -->
 <div id="downloadNameModal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.7); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 16px; z-index: 1000;">
   <div class="card" style="width: 100%; max-width: 480px; text-align: left; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
     <h3 style="font-size: 1.15rem; margin-bottom: 14px; color: var(--text); text-align: center;">Download Details</h3>
-    
-    <!-- Row 1: File Name -->
     <div class="input-group" style="margin-bottom: 14px;">
       <label for="displayFileNameInput">File Name</label>
       <div style="display: flex; gap: 8px;">
@@ -196,8 +187,6 @@
         <button class="btn btn-outline" id="btnCopyFileName" type="button" onclick="copyFileNameOnly()">📋 Copy</button>
       </div>
     </div>
-    
-    <!-- Row 2: Total Amount -->
     <div class="input-group" style="margin-bottom: 14px;">
       <label for="displayTotalAmountInput">Total Amount</label>
       <div style="display: flex; gap: 8px;">
@@ -205,14 +194,11 @@
         <button class="btn btn-success" id="btnCopyTotalAmount" type="button" onclick="copyTotalAndRedirect()">📋 Copy</button>
       </div>
     </div>
-    
     <div id="copyAlertText" style="font-size: 0.85rem; color: var(--success); font-weight: 600; text-align: center; margin-bottom: 12px; display: none;">✓ Copied!</div>
-    
     <button class="btn btn-primary" style="width: 100%;" onclick="closeDownloadModal()">Close</button>
   </div>
 </div>
 
-<!-- Modal for Adding New Master Account -->
 <div id="addModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 16px; z-index: 100;">
   <div class="card" style="width: 100%; max-width: 450px;">
     <h3 style="margin-bottom: 12px;">Add Account to Master List</h3>
@@ -240,21 +226,7 @@
   const DEFAULT_CURRENCY = "INR";
   const DEFAULT_PARTICULARS = "MLPL";
 
-  // Master accounts embedded directly so they appear instantly on page load without fetch issues
-  let masterAccounts = [
-    { name: "Dayakar Gudi", acc: "33195817990", ifsc: "SBIN0003353" },
-    { name: "Aashutosh Singh Rajput", acc: "06421000018445", ifsc: "PSIB0000642" },
-    { name: "VANDAVASI UDAYBHANU", acc: "36316974822", ifsc: "SBIN0003724" },
-    { name: "U LAKSHMI PRASANNA", acc: "44318458045", ifsc: "SBIN0021148" },
-    { name: "Shaik Kalesha", acc: "318701000014918", ifsc: "IOBA0003187" },
-    { name: "Peddiboina Nagalakshmi", acc: "35535221207", ifsc: "SBIN0004700" },
-    { name: "Pendurthi Lakshmi UTIB", acc: "924010031936121", ifsc: "UTIB0004570" },
-    { name: "Thota Sampath", acc: "40705026271", ifsc: "SBIN0021316" },
-    { name: "KUMAR BABU BORRA", acc: "20175817911", ifsc: "SBIN0002758" },
-    { name: "P LAKSHMANA RAO HDFC", acc: "50100633286852", ifsc: "HDFC0008868" },
-    { name: "Sathyam transport", acc: "069205010455", ifsc: "ICIC0000692" }
-  ];
-
+  let masterAccounts = [];
   let currentMatches = [];
   let selectedAccount = null;
   let savedEntries = [];
@@ -262,7 +234,16 @@
   let selectedMatchIndex = -1;
 
   window.onload = function() {
-    document.getElementById('masterCountBadge').innerText = `${masterAccounts.length} Master Accounts Loaded`;
+    fetch('/api/accounts')
+      .then(res => res.json())
+      .then(data => {
+        masterAccounts = data;
+        document.getElementById('masterCountBadge').innerText = `${masterAccounts.length} Master Accounts Loaded`;
+      })
+      .catch(err => {
+        console.error("Failed to load accounts", err);
+        document.getElementById('masterCountBadge').innerText = `0 Master Accounts Loaded`;
+      });
   };
 
   function searchAccount() {
@@ -641,29 +622,6 @@
     document.getElementById('downloadNameModal').style.display = 'none';
   }
 
-  function importMasterCSV(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      const rows = e.target.result.split('\n');
-      const parsed = [];
-      for (let i = 0; i < rows.length; i++) {
-        const cols = rows[i].split(',').map(c => c.replace(/["'\t\r]/g, '').trim());
-        if (cols.length >= 3 && cols[1] && cols[2] && !cols[1].toLowerCase().includes('account')) {
-          parsed.push({ name: cols[0], acc: cols[1], ifsc: cols[2] });
-        }
-      }
-      if (parsed.length > 0) {
-        masterAccounts = parsed;
-        document.getElementById('masterCountBadge').innerText = `${masterAccounts.length} Master Accounts Loaded`;
-        alert(`Successfully imported ${masterAccounts.length} master accounts!`);
-      }
-    };
-    reader.readAsText(file);
-  }
-
   function toggleAddModal() {
     const m = document.getElementById('addModal');
     m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
@@ -679,13 +637,24 @@
       return;
     }
 
-    masterAccounts.push({ name, acc, ifsc });
-    document.getElementById('masterCountBadge').innerText = `${masterAccounts.length} Master Accounts Loaded`;
-    toggleAddModal();
-    document.getElementById('mName').value = '';
-    document.getElementById('mAcc').value = '';
-    document.getElementById('mIfsc').value = '';
-    alert('Account added to master list successfully.');
+    fetch('/api/accounts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, acc, ifsc })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        masterAccounts = data.accounts;
+        document.getElementById('masterCountBadge').innerText = `${masterAccounts.length} Master Accounts Loaded`;
+        toggleAddModal();
+        document.getElementById('mName').value = '';
+        document.getElementById('mAcc').value = '';
+        document.getElementById('mIfsc').value = '';
+        alert('Account added and saved to server CSV successfully!');
+      }
+    })
+    .catch(err => alert('Failed to save account'));
   }
 </script>
 </body>
