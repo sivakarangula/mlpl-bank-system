@@ -242,16 +242,20 @@
   const MASTER_CSV_FILENAME = "MLPL PARTY ACC LIST - LIST.csv";
 
   let db;
-  const dbReq = indexedDB.open("MLPL_DB", 1);
+  // Upgraded version 3 to force clear old cached IndexedDB and fresh fetch CSV
+  const dbReq = indexedDB.open("MLPL_DB", 3);
+  
   dbReq.onupgradeneeded = function(e) {
     db = e.target.result;
-    if (!db.objectStoreNames.contains("accounts")) {
-      db.createObjectStore("accounts", { keyPath: "id", autoIncrement: true });
+    if (db.objectStoreNames.contains("accounts")) {
+      db.deleteObjectStore("accounts");
     }
+    db.createObjectStore("accounts", { keyPath: "id", autoIncrement: true });
   };
+
   dbReq.onsuccess = function(e) {
     db = e.target.result;
-    loadMasterCount();
+    fetchAndAutoLoadCSV();
   };
 
   let masterAccounts = [];
@@ -260,24 +264,6 @@
   let savedEntries = [];
   let editingIndex = -1;
   let selectedMatchIndex = -1;
-
-  function loadMasterCount() {
-    const tx = db.transaction("accounts", "readonly");
-    const store = tx.objectStore("accounts");
-    const countReq = store.count();
-    countReq.onsuccess = function() {
-      const count = countReq.result;
-      if (count === 0) {
-        fetchAndAutoLoadCSV();
-      } else {
-        document.getElementById('masterCountBadge').innerText = `${count} Master Accounts Loaded`;
-        const getAllReq = store.getAll();
-        getAllReq.onsuccess = function() {
-          masterAccounts = getAllReq.result;
-        };
-      }
-    };
-  }
 
   function fetchAndAutoLoadCSV() {
     fetch(MASTER_CSV_FILENAME)
