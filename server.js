@@ -10,7 +10,13 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Serve static files from root directory
+app.use(express.static(__dirname));
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
 
 // Initialize SQLite database
 const db = new sqlite3.Database(path.join(__dirname, 'mlpl_database.db'), (err) => {
@@ -20,7 +26,6 @@ const db = new sqlite3.Database(path.join(__dirname, 'mlpl_database.db'), (err) 
 
 // Setup Tables & Seed Data
 db.serialize(() => {
-  // 1. Master Beneficiaries Table
   db.run(`
     CREATE TABLE IF NOT EXISTS master_accounts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,7 +35,6 @@ db.serialize(() => {
     )
   `);
 
-  // 2. In-Progress Saved Payment Entries Table
   db.run(`
     CREATE TABLE IF NOT EXISTS saved_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,7 +49,6 @@ db.serialize(() => {
     )
   `);
 
-  // Seed 5,937 accounts from CSV if database is empty
   db.get('SELECT COUNT(*) AS count FROM master_accounts', (err, row) => {
     if (!err && row.count === 0) {
       const csvFilePath = path.join(__dirname, 'master_accounts.csv');
@@ -109,7 +112,7 @@ app.get('/api/accounts/search', (req, res) => {
   });
 });
 
-// Add New Master Beneficiary (Persists to database for all devices)
+// Add New Master Beneficiary
 app.post('/api/accounts/add', (req, res) => {
   const { name, acc, ifsc } = req.body;
   if (!name || !acc || !ifsc) return res.status(400).json({ error: 'Missing fields' });
@@ -138,7 +141,7 @@ app.get('/api/accounts/export', (req, res) => {
   });
 });
 
-// In-Progress Payment Entries Endpoints (Shared across all sessions)
+// In-Progress Payment Entries Endpoints
 app.get('/api/entries', (req, res) => {
   db.all('SELECT * FROM saved_entries ORDER BY id ASC', (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -154,7 +157,6 @@ app.post('/api/entries', (req, res) => {
     return res.status(400).json({ error: 'Amount must be below ₹1,00,000 only.' });
   }
 
-  // Check if same credit account and amount exists
   db.get('SELECT * FROM saved_entries WHERE creditAcc = ? AND amount = ?', [creditAcc, numAmt.toFixed(2)], (err, existing) => {
     if (existing && !req.body.forceUpdate) {
       return res.json({ duplicate: true, existingId: existing.id, currentAmount: existing.amount });
