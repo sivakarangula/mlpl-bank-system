@@ -52,60 +52,70 @@
     .mono { font-family: monospace; font-weight: 600; }
     .highlight { background-color: #fef08a; padding: 0 2px; border-radius: 2px; }
     .type-badge { font-weight: bold; background: #e0e7ff; color: #3730a3; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
-    .total-banner { display: flex; flex-direction: column; background: #eff6ff; border-left: 5px solid var(--primary); padding: 12px 16px; border-radius: 8px; width: fit-content; min-width: 260px; }
-    .total-banner-label { font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    .total-banner-val { font-size: 1.5rem; font-weight: 700; color: var(--primary); margin-top: 2px; }
+    
+    .total-banner {
+      display: flex;
+      flex-direction: column;
+      background: #eff6ff;
+      border-left: 5px solid var(--primary);
+      padding: 12px 16px;
+      border-radius: 8px;
+      width: fit-content;
+      min-width: 260px;
+    }
+    .total-banner-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .total-banner-val {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 2px;
+    }
   </style>
 </head>
 <body>
 
-<!-- Authentication Overlay -->
-<div id="loginOverlay" style="position: fixed; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 9999;">
-  <div class="card" style="width: 100%; max-width: 400px; text-align: left; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-    <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; color: var(--text); text-align: center;">Sign In</h2>
-    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; text-align: center;">MATHRUSRI LOGISTICS PVT LTD</div>
-    
-    <form onsubmit="handleLoginAuth(event)">
-      <div class="input-group">
-        <label for="loginUserInput">Username</label>
-        <input type="text" id="loginUserInput" placeholder="Enter Username" required autofocus />
-      </div>
-      <div class="input-group" style="margin-bottom: 14px;">
-        <label for="loginPassInput">Password</label>
-        <input type="password" id="loginPassInput" placeholder="Enter Password" required />
-      </div>
-      <div id="loginAuthError" style="color: var(--danger); font-size: 0.85rem; font-weight: 600; margin-bottom: 12px; display: none; text-align: center;">Invalid Username or Password!</div>
-      <button type="submit" class="btn btn-primary" style="width: 100%;">Sign In &rarr;</button>
-    </form>
-  </div>
-</div>
-
-<div class="app-container" id="mainApp" style="display: none;">
+<div class="app-container">
   <div class="card">
     <header>
       <div>
         <h1>MATHRUSRI LOGISTICS PVT LTD</h1>
         <div class="sub-heading">BANK PAYMENT SYSTEM</div>
-        <span class="badge" id="masterCountBadge">Loading Master Accounts...</span>
+        <span class="badge" id="masterCountBadge">0 Master Accounts Loaded</span>
       </div>
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="importMasterCSV(event)" />
+        <button class="btn btn-outline" onclick="document.getElementById('csvFileInput').click()">📁 Load Master CSV</button>
         <button class="btn btn-outline" onclick="toggleAddModal()">+ Add New Master Acc</button>
-        <button class="btn btn-outline" onclick="exportMasterCSV()">💾 Export Master CSV</button>
         <button class="btn btn-success" onclick="downloadEntriesCSV()">⬇ Download CSV (<span id="savedCount">0</span>)</button>
       </div>
     </header>
   </div>
 
+  <!-- Left Middle Part Total Amount Display -->
   <div class="total-banner">
     <span class="total-banner-label">Total Payment Amount</span>
     <span class="total-banner-val mono" id="middleTotalAmount">₹0.00</span>
   </div>
 
   <div class="card">
+    <!-- Step 1: Search & Continue -->
     <div class="step-box active" id="step1Box">
       <div class="input-group">
         <label for="accSearchInput">STEP 1: Enter Full Account Number OR Last 5 Digits</label>
-        <input type="text" id="accSearchInput" placeholder="Type digits or full account number..." oninput="searchAccountDebounced()" onkeydown="handleSearchKeyDown(event)" autofocus />
+        <input 
+          type="text" 
+          id="accSearchInput" 
+          placeholder="Type digits or full account number..." 
+          oninput="searchAccount()" 
+          onkeydown="handleSearchKeyDown(event)"
+          autofocus 
+        />
       </div>
 
       <div id="matchContainer" style="display: none;">
@@ -115,6 +125,7 @@
       </div>
     </div>
 
+    <!-- Step 3: Transaction Type, Details & Amount -->
     <div class="step-box" id="step2Box" style="display: none;">
       <div style="margin-bottom: 14px; padding: 12px; background: #ffffff; border: 1px solid var(--border); border-radius: 8px;">
         <h4 style="margin-bottom: 6px; color: var(--primary);">Selected Account Details</h4>
@@ -143,6 +154,7 @@
     </div>
   </div>
 
+  <!-- Saved Entries Table -->
   <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
       <h3 style="font-size: 1rem;">Saved Entries for Bulk Upload Export</h3>
@@ -171,28 +183,36 @@
   </div>
 </div>
 
+<!-- Modal for Download Details Display & Copy -->
 <div id="downloadNameModal" style="display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.7); backdrop-filter: blur(4px); align-items: center; justify-content: center; padding: 16px; z-index: 1000;">
-  <div class="card" style="width: 100%; max-width: 480px; text-align: left;">
-    <h3 style="font-size: 1.15rem; margin-bottom: 14px; text-align: center;">Download Details</h3>
+  <div class="card" style="width: 100%; max-width: 480px; text-align: left; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+    <h3 style="font-size: 1.15rem; margin-bottom: 14px; color: var(--text); text-align: center;">Download Details</h3>
+    
+    <!-- Row 1: File Name -->
     <div class="input-group" style="margin-bottom: 14px;">
-      <label>File Name</label>
+      <label for="displayFileNameInput">File Name</label>
       <div style="display: flex; gap: 8px;">
-        <input type="text" id="displayFileNameInput" class="mono" readonly style="font-weight: 700; background: #f1f5f9;" onclick="copyFileNameOnly()" />
-        <button class="btn btn-outline" type="button" onclick="copyFileNameOnly()">📋 Copy</button>
+        <input type="text" id="displayFileNameInput" class="mono" readonly style="font-weight: 700; background: #f1f5f9; cursor: pointer;" onclick="copyFileNameOnly()" />
+        <button class="btn btn-outline" id="btnCopyFileName" type="button" onclick="copyFileNameOnly()">📋 Copy</button>
       </div>
     </div>
+    
+    <!-- Row 2: Total Amount -->
     <div class="input-group" style="margin-bottom: 14px;">
-      <label>Total Amount</label>
+      <label for="displayTotalAmountInput">Total Amount</label>
       <div style="display: flex; gap: 8px;">
-        <input type="text" id="displayTotalAmountInput" class="mono" readonly style="font-weight: 700; color: var(--primary); background: #f1f5f9;" onclick="copyTotalAndRedirect()" />
-        <button class="btn btn-success" type="button" onclick="copyTotalAndRedirect()">📋 Copy</button>
+        <input type="text" id="displayTotalAmountInput" class="mono" readonly style="font-weight: 700; color: var(--primary); background: #f1f5f9; cursor: pointer;" onclick="copyTotalAndRedirect()" />
+        <button class="btn btn-success" id="btnCopyTotalAmount" type="button" onclick="copyTotalAndRedirect()">📋 Copy</button>
       </div>
     </div>
+    
     <div id="copyAlertText" style="font-size: 0.85rem; color: var(--success); font-weight: 600; text-align: center; margin-bottom: 12px; display: none;">✓ Copied!</div>
+    
     <button class="btn btn-primary" style="width: 100%;" onclick="closeDownloadModal()">Close</button>
   </div>
 </div>
 
+<!-- Modal for Adding New Master Account -->
 <div id="addModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; padding: 16px; z-index: 100;">
   <div class="card" style="width: 100%; max-width: 450px;">
     <h3 style="margin-bottom: 12px;">Add Account to Master List</h3>
@@ -210,7 +230,7 @@
     </div>
     <div style="display: flex; gap: 8px; justify-content: flex-end;">
       <button class="btn btn-outline" onclick="toggleAddModal()">Cancel</button>
-      <button class="btn btn-primary" id="btnSaveMasterAcc" onclick="saveNewMasterAccount()">Save Account</button>
+      <button class="btn btn-primary" onclick="saveNewMasterAccount()">Save Account</button>
     </div>
   </div>
 </div>
@@ -220,62 +240,56 @@
   const DEFAULT_CURRENCY = "INR";
   const DEFAULT_PARTICULARS = "MLPL";
 
+  let db;
+  const dbReq = indexedDB.open("MLPL_DB", 1);
+  dbReq.onupgradeneeded = function(e) {
+    db = e.target.result;
+    if (!db.objectStoreNames.contains("accounts")) {
+      db.createObjectStore("accounts", { keyPath: "id", autoIncrement: true });
+    }
+  };
+  dbReq.onsuccess = function(e) {
+    db = e.target.result;
+    loadMasterCount();
+  };
+
+  let masterAccounts = [];
   let currentMatches = [];
   let selectedAccount = null;
   let savedEntries = [];
-  let editingId = null;
+  let editingIndex = -1;
   let selectedMatchIndex = -1;
-  let searchTimeout = null;
 
-  async function handleLoginAuth(e) {
-    e.preventDefault();
-    const username = document.getElementById('loginUserInput').value.trim();
-    const password = document.getElementById('loginPassInput').value.trim();
-    const errEl = document.getElementById('loginAuthError');
-
-    try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
-      });
-      const data = await res.json();
-      if (data.success) {
-        errEl.style.display = 'none';
-        document.getElementById('loginOverlay').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'flex';
-        loadMasterCount();
-        loadSavedEntries();
-      } else {
-        errEl.style.display = 'block';
+  function loadMasterCount() {
+    const tx = db.transaction("accounts", "readonly");
+    const store = tx.objectStore("accounts");
+    const countReq = store.count();
+    countReq.onsuccess = function() {
+      const count = countReq.result;
+      if (count === 0) {
+        // Auto-seed a sample account if database is empty on Render deployment
+        const defaultAccount = { name: "Sample Party Account", acc: "1234567890123", ifsc: "SBIN0001234" };
+        const writeTx = db.transaction("accounts", "readwrite");
+        writeTx.objectStore("accounts").add(defaultAccount);
+        writeTx.oncomplete = function() {
+          loadMasterCount();
+        };
+        return;
       }
-    } catch (err) {
-      errEl.style.display = 'block';
-    }
+      document.getElementById('masterCountBadge').innerText = `${count} Master Accounts Loaded`;
+      const getAllReq = store.getAll();
+      getAllReq.onsuccess = function() {
+        masterAccounts = getAllReq.result;
+      };
+    };
   }
 
-  async function loadMasterCount() {
-    try {
-      const res = await fetch('/api/accounts/count');
-      const data = await res.json();
-      document.getElementById('masterCountBadge').innerText = `${data.count} Master Accounts Loaded`;
-      document.getElementById('accSearchInput').focus();
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  function searchAccountDebounced() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(searchAccount, 200);
-  }
-
-  async function searchAccount() {
+  function searchAccount() {
     const rawVal = document.getElementById('accSearchInput').value.trim();
     const cleanVal = rawVal.replace(/\s+/g, '');
     const matchContainer = document.getElementById('matchContainer');
     const matchList = document.getElementById('matchList');
-
+    
     matchList.innerHTML = '';
     selectedAccount = null;
     currentMatches = [];
@@ -286,45 +300,47 @@
       return;
     }
 
-    try {
-      const res = await fetch(`/api/accounts/search?q=${encodeURIComponent(cleanVal)}`);
-      currentMatches = await res.json();
-
-      if (currentMatches.length > 0) {
-        matchContainer.style.display = 'block';
-        document.getElementById('matchSummaryLabel').innerText = `Found ${currentMatches.length} matching account(s):`;
-
-        currentMatches.forEach((item, idx) => {
-          const div = document.createElement('div');
-          div.className = 'match-item';
-          div.setAttribute('data-idx', idx);
-
-          let highlightedAcc = String(item.acc);
-          if (highlightedAcc.endsWith(cleanVal)) {
-            const prefix = highlightedAcc.slice(0, highlightedAcc.length - cleanVal.length);
-            highlightedAcc = `${prefix}<span class="highlight">${cleanVal}</span>`;
-          } else {
-            highlightedAcc = highlightedAcc.replace(new RegExp(`(${cleanVal})`, 'gi'), '<span class="highlight">$1</span>');
-          }
-
-          div.innerHTML = `<div><strong>${item.name}</strong><br><span class="mono">${highlightedAcc}</span> | <span class="mono">${item.ifsc}</span></div>`;
-          div.onclick = () => {
-            selectedMatchIndex = idx;
-            selectAccount(item, div);
-          };
-          matchList.appendChild(div);
-
-          if (cleanVal === String(item.acc) || (currentMatches.length === 1 && idx === 0)) {
-            selectedMatchIndex = 0;
-            selectAccount(item, div);
-          }
-        });
-      } else {
-        matchContainer.style.display = 'block';
-        matchList.innerHTML = '<div style="padding: 8px; color: var(--text-muted);">No matching account number found.</div>';
+    currentMatches = masterAccounts.filter(item => {
+      const cleanAcc = String(item.acc).replace(/\s+/g, '');
+      const isDigitsOnly = /^\d+$/.test(cleanVal);
+      if (isDigitsOnly) {
+        return cleanAcc === cleanVal || cleanAcc.endsWith(cleanVal);
       }
-    } catch (err) {
-      console.error(err);
+      return cleanAcc.includes(cleanVal) || item.name.toLowerCase().includes(rawVal.toLowerCase());
+    });
+
+    if (currentMatches.length > 0) {
+      matchContainer.style.display = 'block';
+      document.getElementById('matchSummaryLabel').innerText = `Found ${currentMatches.length} matching account(s):`;
+
+      currentMatches.slice(0, 50).forEach((item, idx) => {
+        const div = document.createElement('div');
+        div.className = 'match-item';
+        div.setAttribute('data-idx', idx);
+
+        let highlightedAcc = String(item.acc);
+        if (highlightedAcc.endsWith(cleanVal)) {
+          const prefix = highlightedAcc.slice(0, highlightedAcc.length - cleanVal.length);
+          highlightedAcc = `${prefix}<span class="highlight">${cleanVal}</span>`;
+        } else {
+          highlightedAcc = highlightedAcc.replace(new RegExp(`(${cleanVal})`, 'gi'), '<span class="highlight">$1</span>');
+        }
+
+        div.innerHTML = `<div><strong>${item.name}</strong><br><span class="mono">${highlightedAcc}</span> | <span class="mono">${item.ifsc}</span></div>`;
+        div.onclick = () => {
+          selectedMatchIndex = idx;
+          selectAccount(item, div);
+        };
+        matchList.appendChild(div);
+
+        if (cleanVal === String(item.acc) || (currentMatches.length === 1 && idx === 0)) {
+          selectedMatchIndex = 0;
+          selectAccount(item, div);
+        }
+      });
+    } else {
+      matchContainer.style.display = 'block';
+      matchList.innerHTML = '<div style="padding: 8px; color: var(--text-muted);">No matching account number found.</div>';
     }
   }
 
@@ -345,10 +361,13 @@
         return;
       }
     }
+
     if (e.key === 'Enter') {
-      if (selectedAccount) proceedToAmountStep();
-      else if (currentMatches.length > 0) {
-        selectAccount(currentMatches[0], document.querySelector('.match-item'));
+      if (selectedAccount) {
+        proceedToAmountStep();
+      } else if (currentMatches.length > 0) {
+        const firstEl = document.querySelector('.match-item');
+        selectAccount(currentMatches[0], firstEl);
         proceedToAmountStep();
       }
     }
@@ -357,10 +376,14 @@
   function handleStep2KeyDown(e) {
     const txSelect = document.getElementById('txTypeSelect');
     const amountInput = document.getElementById('amountInput');
+
     if (e.key === 'Enter') {
       e.preventDefault();
       saveCurrentEntry();
-    } else if (e.target === amountInput && e.key === 'ArrowUp') {
+      return;
+    }
+
+    if (e.target === amountInput && e.key === 'ArrowUp') {
       e.preventDefault();
       txSelect.focus();
     } else if (e.target === txSelect && e.key === 'ArrowDown') {
@@ -386,14 +409,14 @@
 
     document.getElementById('step1Box').style.display = 'none';
     document.getElementById('step2Box').style.display = 'block';
-    if (!editingId) {
+    if (editingIndex === -1) {
       document.getElementById('txTypeSelect').value = 'NFT';
       document.getElementById('amountInput').value = '';
     }
     document.getElementById('amountInput').focus();
   }
 
-  async function saveCurrentEntry() {
+  function saveCurrentEntry() {
     const txType = document.getElementById('txTypeSelect').value;
     const amt = document.getElementById('amountInput').value.trim();
     const numAmt = parseFloat(amt);
@@ -402,71 +425,92 @@
       alert('Please enter a valid amount.');
       return;
     }
-    if (numAmt >= 100000) {
-      alert('Amount exceeds the limit! Every payment must and should be below ₹1,00,000 only.');
-      return;
-    }
 
-    if (editingId) {
-      const res = await fetch(`/api/entries/${editingId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ txType, amount: numAmt.toFixed(2) })
-      });
-      const data = await res.json();
-      if (data.error) { alert(data.error); return; }
-      editingId = null;
+    const cleanCreditAcc = String(selectedAccount.acc).replace(/\s+/g, '');
+
+    if (editingIndex !== -1) {
+      if (numAmt >= 100000) {
+        alert('Amount exceeds the limit! Every payment must and should be below ₹1,00,000 only.');
+        return;
+      }
+      savedEntries[editingIndex].amount = numAmt.toFixed(2);
+      savedEntries[editingIndex].txType = txType;
+      editingIndex = -1;
     } else {
-      const payload = {
-        txType,
-        debitAcc: DEBIT_ACCOUNT,
-        amount: numAmt.toFixed(2),
-        currency: DEFAULT_CURRENCY,
-        creditAcc: selectedAccount.acc,
-        ifsc: selectedAccount.ifsc,
-        particulars: DEFAULT_PARTICULARS,
-        partyName: selectedAccount.name
-      };
+      const sameAccSameAmtIndex = savedEntries.findIndex(
+        entry => String(entry.creditAcc).replace(/\s+/g, '') === cleanCreditAcc && parseFloat(entry.amount) === numAmt
+      );
 
-      const res = await fetch('/api/entries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const result = await res.json();
+      if (sameAccSameAmtIndex !== -1) {
+        const existingAmount = parseFloat(savedEntries[sameAccSameAmtIndex].amount);
+        const combinedAmount = existingAmount + numAmt;
 
-      if (result.duplicate) {
         const confirmAdd = confirm(`The exact same amount (₹${numAmt.toFixed(2)}) already exists for account ${selectedAccount.acc}. Do you want to add this to the existing payment?`);
         if (confirmAdd) {
-          const updateRes = await fetch('/api/entries', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...payload, addToExistingId: result.existingId })
-          });
-          const updateData = await updateRes.json();
-          if (updateData.error) { alert(updateData.error); return; }
+          if (combinedAmount >= 100000) {
+            alert(`Combined amount exceeds limit! Existing: ₹${existingAmount.toFixed(2)}, New: ₹${numAmt.toFixed(2)}, Total: ₹${combinedAmount.toFixed(2)}. Total must be below ₹1,00,000.`);
+            return;
+          }
+          savedEntries[sameAccSameAmtIndex].amount = combinedAmount.toFixed(2);
+          savedEntries[sameAccSameAmtIndex].txType = txType;
         } else {
           document.getElementById('amountInput').focus();
           return;
         }
-      } else if (result.error) {
-        alert(result.error);
-        return;
+      } else {
+        if (numAmt >= 100000) {
+          alert('Amount exceeds the limit! Every payment must and should be below ₹1,00,000 only.');
+          return;
+        }
+
+        savedEntries.push({
+          txType: txType,
+          debitAcc: DEBIT_ACCOUNT,
+          amount: numAmt.toFixed(2),
+          currency: DEFAULT_CURRENCY,
+          creditAcc: selectedAccount.acc,
+          ifsc: selectedAccount.ifsc,
+          particulars: DEFAULT_PARTICULARS,
+          partyName: selectedAccount.name
+        });
       }
     }
 
-    await loadSavedEntries();
+    renderSavedEntries();
     resetWorkflow();
   }
 
-  async function loadSavedEntries() {
-    try {
-      const res = await fetch('/api/entries');
-      savedEntries = await res.json();
+  function editEntry(index) {
+    const item = savedEntries[index];
+    editingIndex = index;
+    selectedAccount = {
+      name: item.partyName,
+      acc: item.creditAcc,
+      ifsc: item.ifsc
+    };
+
+    document.getElementById('txTypeSelect').value = item.txType;
+    document.getElementById('amountInput').value = item.amount;
+    proceedToAmountStep();
+  }
+
+  function deleteEntry(index) {
+    if (confirm('Are you sure you want to delete this payment entry?')) {
+      savedEntries.splice(index, 1);
       renderSavedEntries();
-    } catch (err) {
-      console.error(err);
     }
+  }
+
+  function resetWorkflow() {
+    selectedAccount = null;
+    currentMatches = [];
+    editingIndex = -1;
+    selectedMatchIndex = -1;
+    document.getElementById('accSearchInput').value = '';
+    document.getElementById('matchContainer').style.display = 'none';
+    document.getElementById('step2Box').style.display = 'none';
+    document.getElementById('step1Box').style.display = 'block';
+    document.getElementById('accSearchInput').focus();
   }
 
   function renderSavedEntries() {
@@ -494,8 +538,8 @@
           <td class="mono">${entry.ifsc}</td>
           <td class="mono">${entry.particulars}</td>
           <td style="text-align: center; white-space: nowrap;">
-            <button class="btn btn-edit" onclick="editEntry(${entry.id})">Edit</button>
-            <button class="btn btn-danger" onclick="deleteEntry(${entry.id})">Delete</button>
+            <button class="btn btn-edit" onclick="editEntry(${idx})">Edit</button>
+            <button class="btn btn-danger" onclick="deleteEntry(${idx})">Delete</button>
           </td>
         </tr>
       `;
@@ -504,40 +548,11 @@
     middleTotal.innerText = `₹${total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
-  function editEntry(id) {
-    const item = savedEntries.find(e => e.id === id);
-    if (!item) return;
-    editingId = id;
-    selectedAccount = { name: item.partyName, acc: item.creditAcc, ifsc: item.ifsc };
-    document.getElementById('txTypeSelect').value = item.txType;
-    document.getElementById('amountInput').value = item.amount;
-    proceedToAmountStep();
-  }
-
-  async function deleteEntry(id) {
-    if (confirm('Are you sure you want to delete this payment entry?')) {
-      await fetch(`/api/entries/${id}`, { method: 'DELETE' });
-      loadSavedEntries();
-    }
-  }
-
-  async function clearSavedEntries() {
+  function clearSavedEntries() {
     if (savedEntries.length > 0 && confirm('Are you sure you want to clear current payment list?')) {
-      await fetch('/api/entries', { method: 'DELETE' });
-      loadSavedEntries();
+      savedEntries = [];
+      renderSavedEntries();
     }
-  }
-
-  function resetWorkflow() {
-    selectedAccount = null;
-    currentMatches = [];
-    editingId = null;
-    selectedMatchIndex = -1;
-    document.getElementById('accSearchInput').value = '';
-    document.getElementById('matchContainer').style.display = 'none';
-    document.getElementById('step2Box').style.display = 'none';
-    document.getElementById('step1Box').style.display = 'block';
-    document.getElementById('accSearchInput').focus();
   }
 
   function downloadEntriesCSV() {
@@ -545,6 +560,7 @@
       alert('No account entries to download.');
       return;
     }
+
     let csv = "";
     let total = 0;
     savedEntries.forEach(r => {
@@ -555,11 +571,13 @@
     const now = new Date();
     const istString = now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" });
     const istDate = new Date(istString);
+
     const day = String(istDate.getDate()).padStart(2, '0');
     const month = String(istDate.getMonth() + 1).padStart(2, '0');
     const year = istDate.getFullYear();
     const hours12 = String(istDate.getHours() % 12 || 12).padStart(2, '0');
     const minutes = String(istDate.getMinutes()).padStart(2, '0');
+    
     const baseName = `${day}${month}${year}${hours12}${minutes}`;
     const fullFileName = `${baseName}.csv`;
 
@@ -579,15 +597,39 @@
 
   function copyFileNameOnly() {
     const copyInput = document.getElementById('displayFileNameInput');
-    navigator.clipboard.writeText(copyInput.value);
-    showCopyAlert('✓ File Name Copied!');
+    const textToCopy = copyInput.value;
+    
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        showCopyAlert('✓ File Name Copied!');
+      }).catch(() => {
+        execFallbackCopy(textToCopy, '✓ File Name Copied!');
+      });
+    } else {
+      execFallbackCopy(textToCopy, '✓ File Name Copied!');
+    }
   }
 
   function copyTotalAndRedirect() {
     const totalInput = document.getElementById('displayTotalAmountInput');
-    navigator.clipboard.writeText(totalInput.value);
-    closeDownloadModal();
-    resetWorkflow();
+    const textToCopy = totalInput.value;
+    
+    const performRedirect = () => {
+      closeDownloadModal();
+      resetWorkflow();
+    };
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        performRedirect();
+      }).catch(() => {
+        execFallbackCopy(textToCopy);
+        performRedirect();
+      });
+    } else {
+      execFallbackCopy(textToCopy);
+      performRedirect();
+    }
   }
 
   function showCopyAlert(msg) {
@@ -596,8 +638,55 @@
     alertEl.style.display = 'block';
   }
 
+  function execFallbackCopy(text, msg) {
+    const tempTextarea = document.createElement('textarea');
+    tempTextarea.value = text;
+    tempTextarea.style.position = 'fixed';
+    tempTextarea.style.left = '-9999px';
+    tempTextarea.style.top = '0';
+    document.body.appendChild(tempTextarea);
+    tempTextarea.focus();
+    tempTextarea.select();
+    try {
+      document.execCommand('copy');
+      if (msg) showCopyAlert(msg);
+    } catch (err) {
+      alert('Could not copy automatically. Please copy manually.');
+    }
+    document.body.removeChild(tempTextarea);
+  }
+
   function closeDownloadModal() {
     document.getElementById('downloadNameModal').style.display = 'none';
+  }
+
+  function importMasterCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const rows = e.target.result.split('\n');
+      const parsed = [];
+      for (let i = 0; i < rows.length; i++) {
+        const cols = rows[i].split(',').map(c => c.replace(/["'\t\r]/g, '').trim());
+        if (cols.length >= 3 && cols[1] && cols[2] && !cols[1].toLowerCase().includes('account')) {
+          parsed.push({ name: cols[0], acc: cols[1], ifsc: cols[2] });
+        }
+      }
+      if (parsed.length > 0) {
+        const tx = db.transaction("accounts", "readwrite");
+        const store = tx.objectStore("accounts");
+        store.clear();
+        parsed.forEach(item => store.add(item));
+        tx.oncomplete = function() {
+          masterAccounts = parsed;
+          document.getElementById('masterCountBadge').innerText = `${parsed.length} Master Accounts Loaded`;
+          alert(`Successfully stored ${parsed.length} accounts in browser database permanently!`);
+        };
+      }
+    };
+    reader.readAsText(file);
   }
 
   function toggleAddModal() {
@@ -605,7 +694,7 @@
     m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
   }
 
-  async function saveNewMasterAccount() {
+  function saveNewMasterAccount() {
     const name = document.getElementById('mName').value.trim();
     const acc = document.getElementById('mAcc').value.trim();
     const ifsc = document.getElementById('mIfsc').value.trim().toUpperCase();
@@ -615,36 +704,19 @@
       return;
     }
 
-    const btn = document.getElementById('btnSaveMasterAcc');
-    btn.disabled = true;
-
-    try {
-      const res = await fetch('/api/accounts/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, acc, ifsc })
-      });
-      const data = await res.json();
-      btn.disabled = false;
-
-      if (data.success) {
-        document.getElementById('masterCountBadge').innerText = `${data.count} Master Accounts Loaded`;
-        toggleAddModal();
-        document.getElementById('mName').value = '';
-        document.getElementById('mAcc').value = '';
-        document.getElementById('mIfsc').value = '';
-        alert(`Account added across all devices! Master list now contains ${data.count} accounts.`);
-      } else {
-        alert(data.error || 'Failed to save account');
-      }
-    } catch (err) {
-      btn.disabled = false;
-      alert('Network error while saving account');
-    }
-  }
-
-  function exportMasterCSV() {
-    window.location.href = '/api/accounts/export';
+    const newObj = { name, acc, ifsc };
+    const tx = db.transaction("accounts", "readwrite");
+    const store = tx.objectStore("accounts");
+    store.add(newObj);
+    tx.oncomplete = function() {
+      masterAccounts.push(newObj);
+      document.getElementById('masterCountBadge').innerText = `${masterAccounts.length} Master Accounts Loaded`;
+      toggleAddModal();
+      document.getElementById('mName').value = '';
+      document.getElementById('mAcc').value = '';
+      document.getElementById('mIfsc').value = '';
+      alert('Account added to master list successfully.');
+    };
   }
 </script>
 </body>
