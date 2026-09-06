@@ -86,7 +86,7 @@
       <div>
         <h1>MATHRUSRI LOGISTICS PVT LTD</h1>
         <div class="sub-heading">BANK PAYMENT SYSTEM</div>
-        <span class="badge" id="masterCountBadge">0 Master Accounts Loaded</span>
+        <span class="badge" id="masterCountBadge">Loading Master Accounts...</span>
       </div>
       <div style="display: flex; gap: 8px; flex-wrap: wrap;">
         <input type="file" id="csvFileInput" accept=".csv" style="display: none;" onchange="importMasterCSV(event)" />
@@ -239,6 +239,7 @@
   const DEBIT_ACCOUNT = "4242002100012161";
   const DEFAULT_CURRENCY = "INR";
   const DEFAULT_PARTICULARS = "MLPL";
+  const MASTER_CSV_FILENAME = "MLPL PARTY ACC LIST - LIST.csv";
 
   let db;
   const dbReq = indexedDB.open("MLPL_DB", 1);
@@ -267,21 +268,54 @@
     countReq.onsuccess = function() {
       const count = countReq.result;
       if (count === 0) {
-        // Auto-seed a sample account if database is empty on Render deployment
-        const defaultAccount = { name: "Sample Party Account", acc: "1234567890123", ifsc: "SBIN0001234" };
-        const writeTx = db.transaction("accounts", "readwrite");
-        writeTx.objectStore("accounts").add(defaultAccount);
-        writeTx.oncomplete = function() {
-          loadMasterCount();
+        fetchAndAutoLoadCSV();
+      } else {
+        document.getElementById('masterCountBadge').innerText = `${count} Master Accounts Loaded`;
+        const getAllReq = store.getAll();
+        getAllReq.onsuccess = function() {
+          masterAccounts = getAllReq.result;
         };
-        return;
       }
-      document.getElementById('masterCountBadge').innerText = `${count} Master Accounts Loaded`;
-      const getAllReq = store.getAll();
-      getAllReq.onsuccess = function() {
-        masterAccounts = getAllReq.result;
-      };
     };
+  }
+
+  function fetchAndAutoLoadCSV() {
+    fetch(MASTER_CSV_FILENAME)
+      .then(response => {
+        if (!response.ok) throw new Error("CSV file not found");
+        return response.text();
+      })
+      .then(csvText => {
+        parseAndStoreCSVText(csvText, true);
+      })
+      .catch(err => {
+        document.getElementById('masterCountBadge').innerText = `0 Master Accounts Loaded`;
+        console.warn("Could not auto-load CSV file from repository root.", err);
+      });
+  }
+
+  function parseAndStoreCSVText(csvText, isAutoLoad) {
+    const rows = csvText.split('\n');
+    const parsed = [];
+    for (let i = 0; i < rows.length; i++) {
+      const cols = rows[i].split(',').map(c => c.replace(/["'\t\r]/g, '').trim());
+      if (cols.length >= 3 && cols[1] && cols[2] && !cols[1].toLowerCase().includes('account')) {
+        parsed.push({ name: cols[0], acc: cols[1], ifsc: cols[2] });
+      }
+    }
+    if (parsed.length > 0) {
+      const tx = db.transaction("accounts", "readwrite");
+      const store = tx.objectStore("accounts");
+      store.clear();
+      parsed.forEach(item => store.add(item));
+      tx.oncomplete = function() {
+        masterAccounts = parsed;
+        document.getElementById('masterCountBadge').innerText = `${parsed.length} Master Accounts Loaded`;
+        if (!isAutoLoad) {
+          alert(`Successfully stored ${parsed.length} accounts in browser database permanently!`);
+        }
+      };
+    }
   }
 
   function searchAccount() {
@@ -666,25 +700,7 @@
 
     const reader = new FileReader();
     reader.onload = function(e) {
-      const rows = e.target.result.split('\n');
-      const parsed = [];
-      for (let i = 0; i < rows.length; i++) {
-        const cols = rows[i].split(',').map(c => c.replace(/["'\t\r]/g, '').trim());
-        if (cols.length >= 3 && cols[1] && cols[2] && !cols[1].toLowerCase().includes('account')) {
-          parsed.push({ name: cols[0], acc: cols[1], ifsc: cols[2] });
-        }
-      }
-      if (parsed.length > 0) {
-        const tx = db.transaction("accounts", "readwrite");
-        const store = tx.objectStore("accounts");
-        store.clear();
-        parsed.forEach(item => store.add(item));
-        tx.oncomplete = function() {
-          masterAccounts = parsed;
-          document.getElementById('masterCountBadge').innerText = `${parsed.length} Master Accounts Loaded`;
-          alert(`Successfully stored ${parsed.length} accounts in browser database permanently!`);
-        };
-      }
+      parseAndStoreCSVText(e.target.result, false);
     };
     reader.readAsText(file);
   }
